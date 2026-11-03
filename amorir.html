@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A MORIR - Simulador Buckshot</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: #0d0d0d url('fondo.png') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            color: #d1d1d1;
+            overflow: hidden;
+        }
+        #game-container {
+            background: rgba(10, 10, 12, 0.95);
+            padding: 25px;
+            border-radius: 8px;
+            border: 2px solid #3a3a3a;
+            width: 440px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.9);
+            position: relative;
+        }
+        h1 { 
+            margin-top: 0; 
+            color: #cc0000; 
+            letter-spacing: 4px;
+            text-shadow: 0 0 8px rgba(204, 0, 0, 0.6);
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            font-size: 0.75em;
+            color: #666;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 12px 0;
+            font-size: 1.1em;
+            background: #141416;
+            padding: 10px;
+            border: 1px solid #2a2a2e;
+            border-radius: 4px;
+        }
+        .red-shells { color: #ff3333; font-weight: bold; }
+        .blue-shells { color: #33a1ff; font-weight: bold; }
+        .player-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input, select {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #18181c;
+            color: #fff;
+            text-align: center;
+            font-family: inherit;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 5px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2a30;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        button:hover { background: #44444e; }
+        button:active { transform: scale(0.97); }
+        button.action-btn { background: #880000; width: 100%; margin-bottom: 10px; border-color: #aa0000; font-size: 1.05em; }
+        button.action-btn:hover { background: #aa0000; }
+        #log {
+            height: 100px;
+            background: #08080a;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #222;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 0.85em;
+            margin-top: 10px;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        .hidden { display: none; }
+        .music-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #141418;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #2e2e36;
+            font-size: 0.85em;
+        }
+        .lives-board {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+            text-align: left;
+            background: #141416;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #25252a;
+        }
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+        .round-indicator {
+            font-size: 0.9em;
+            color: #ffcc00;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>A MORIR</h1>
+        <div class="subtitle">SIMULADOR DE ESCOPETA</div>
+        
+        <!-- Control de Música -->
+        <div class="music-bar">
+            <span>🎵 MÚSICA DE FONDO</span>
+            <button onclick="toggleMusic()" id="music-btn" style="padding: 4px 10px; font-size: 0.8em; margin: 0;">REPRODUCIR MÚSICA</button>
+        </div>
+
+        <!-- Fase 1: Configuración -->
+        <div id="setup-phase">
+            <div style="margin-bottom: 8px; font-size: 0.85em; text-align: left;">CANTIDAD DE JUGADORES:</div>
+            <select id="num-players" onchange="updatePlayerInputs()" style="width: 100%; margin-bottom: 15px;">
+                <option value="2">2 Jugadores</option>
+                <option value="3">3 Jugadores</option>
+                <option value="4">4 Jugadores</option>
+            </select>
+
+            <div class="player-inputs" id="players-container">
+                <input type="text" id="p0" placeholder="Jugador 1" value="Jugador 1">
+                <input type="text" id="p1" placeholder="Jugador 2" value="Jugador 2">
+            </div>
+            <button onclick="startGame()" style="width: 100%; background: #990000; border-color: #bb0000; margin: 10px 0 0 0;">INICIAR PARTIDA</button>
+        </div>
+
+        <!-- Fase 2: Juego -->
+        <div id="game-phase" class="hidden">
+            <div class="round-indicator" id="round-indicator">RONDA 1 DE 3</div>
+            <div class="lives-board" id="lives-board"></div>
+
+            <div class="stats">
+                <div>TOTAL: <span id="total-count">0</span></div>
+                <div>ROJAS: <span id="red-count" class="red-shells">0</span></div>
+                <div>AZULES: <span id="blue-count" class="blue-shells">0</span></div>
+            </div>
+            
+            <div style="margin-bottom: 12px; font-size: 1.05em;">
+                TURNO DE: <strong id="current-player-name" style="color: #ffcc00;"></strong>
+            </div>
+
+            <div style="margin-bottom: 6px; text-align: left; font-size: 0.8em; color: #888;">SELECCIONAR OBJETIVO:</div>
+            <select id="target-select" style="width: 100%; margin-bottom: 10px;"></select>
+
+            <button class="action-btn" id="fire-btn" onclick="takeAction()">ACCIONAR GATILLO</button>
+
+            <div id="log"></div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="resetGame()" style="background: #222; font-size: 0.85em;">REINICIAR PARTIDA</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let players = [];
+        let currentPlayerIndex = 0;
+        let redShells = 0, blueShells = 0;
+        let chamber = [];
+        let gameActive = false;
+        let currentRound = 1;
+        const maxRounds = 3;
+        
+        let bgAudio = new Audio('main-menu.mp3');
+        bgAudio.loop = true;
+        let isMusicPlaying = false;
+
+        function addLog(msg) {
+            let logElement = document.getElementById('log');
+            if (logElement) {
+                logElement.innerHTML += `<div>${msg}</div>`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+
+        function toggleMusic() {
+            let btn = document.getElementById('music-btn');
+            if (isMusicPlaying) {
+                bgAudio.pause();
+                btn.innerText = "REPRODUCIR MÚSICA";
+                btn.style.background = "#2a2a30";
+                isMusicPlaying = false;
+            } else {
+                bgAudio.play().then(() => {
+                    btn.innerText = "PAUSAR MÚSICA";
+                    btn.style.background = "#006600";
+                    isMusicPlaying = true;
+                }).catch(e => {
+                    alert("Asegúrate de tener el archivo 'main-menu.mp3' en la misma carpeta.");
+                });
+            }
+        }
+
+        function updatePlayerInputs() {
+            let count = parseInt(document.getElementById('num-players').value);
+            let container = document.getElementById('players-container');
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                container.innerHTML += `<input type="text" id="p${i}" placeholder="Jugador ${i + 1}" value="Jugador ${i + 1}">`;
+            }
+        }
+
+        function startGame() {
+            let count = parseInt(document.getElementById('num-players').value);
+            players = [];
+            for (let i = 0; i < count; i++) {
+                let name = document.getElementById(`p${i}`).value.trim() || `Jugador ${i + 1}`;
+                players.push({
+                    name: name,
+                    lives: 3
+                });
+            }
+
+            currentRound = 1;
+            currentPlayerIndex = 0;
+            document.getElementById('fire-btn').disabled = false;
+            document.getElementById('setup-phase').classList.add('hidden');
+            document.getElementById('game-phase').classList.remove('hidden');
+            document.getElementById('log').innerHTML = "";
+            addLog("<em>La partida ha comenzado. ¡A Morir!</em>");
+            
+            loadNewChamber();
+            gameActive = true;
+        }
+
+        function loadNewChamber() {
+            let totalSize;
+            if (Math.random() < 0.8) {
+                totalSize = Math.floor(Math.random() * 3) + 6; // 6, 7 u 8
+            } else {
+                totalSize = Math.floor(Math.random() * 4) + 2; // 2 a 5
+            }
+
+            redShells = Math.floor(Math.random() * (totalSize - 1)) + 1;
+            blueShells = totalSize - redShells;
+
+            chamber = [];
+            for(let i = 0; i < redShells; i++) chamber.push('R');
+            for(let i = 0; i < blueShells; i++) chamber.push('A');
+            chamber.sort(() => Math.random() - 0.5);
+
+            updateGameUI();
+        }
+
+        function updateGameUI() {
+            document.getElementById('round-indicator').innerText = `RONDA ${currentRound} DE ${maxRounds}`;
+            document.getElementById('red-count').innerText = redShells;
+            document.getElementById('blue-count').innerText = blueShells;
+            document.getElementById('total-count').innerText = chamber.length;
+
+            let board = document.getElementById('lives-board');
+            board.innerHTML = '';
+            players.forEach((p, idx) => {
+                let hearts = "❤️".repeat(p.lives);
+                let highlight = (idx === currentPlayerIndex) ? "color: #ffcc00; font-weight: bold;" : "";
+                board.innerHTML += `<div class="player-row" style="${highlight}"><span>${p.name}</span><span>${hearts}</span></div>`;
+            });
+
+            document.getElementById('current-player-name').innerText = players[currentPlayerIndex].name;
+
+            let targetSelect = document.getElementById('target-select');
+            targetSelect.innerHTML = '';
+            players.forEach((p, idx) => {
+                let label = (idx === currentPlayerIndex) ? `${p.name} (A sí mismo)` : p.name;
+                targetSelect.innerHTML += `<option value="${idx}">${label}</option>`;
+            });
+        }
+
+        function resetAllLives() {
+            players.forEach(p => p.lives = 3);
+            addLog("<strong style='color: #ffcc00;'>¡Todos recuperan sus 3 vidas completas!</strong>");
+        }
+
+        function endMatch() {
+            gameActive = false;
+            document.getElementById('fire-btn').disabled = true;
+            
+            // Buscar al jugador con más vidas
+            let sortedPlayers = [...players].sort((a, b) => b.lives - a.lives);
+            let winner = sortedPlayers[0];
+            
+            addLog(`<br><strong style="color: #00ff66; font-size: 1.15em;">🏆 GANADOR: ${winner.name}</strong>`);
+        }
+
+        function takeAction() {
+            if (!gameActive || chamber.length === 0) return;
+
+            let targetSelect = document.getElementById('target-select');
+            if (!targetSelect.value) return;
+            let targetIndex = parseInt(targetSelect.value);
+
+            let shot = chamber.shift();
+            let executor = players[currentPlayerIndex];
+            let target = players[targetIndex];
+            let isBlank = (shot === 'A');
+
+            if (isBlank) {
+                blueShells--;
+                addLog(`<strong>${executor.name}</strong> accionó contra <strong>${target.name}</strong>: El cartucho estaba vacío.`);
+            } else {
+                redShells--;
+                target.lives--;
+                addLog(`<strong style="color: #ff3333;">${executor.name}</strong> accionó contra <strong>${target.name}</strong>: ¡Impacto certero! (-1 vida)`);
+            }
+
+            // Si muere un jugador, reviven todos y se recarga
+            if (target.lives <= 0) {
+                addLog(`<strong style="color: #ff0000; font-size: 1.05em;">💀 ¡${target.name} ha muerto! Reiniciando la ronda...</strong>`);
+                resetAllLives();
+                loadNewChamber();
+                return;
+            }
+
+            let repeatsTurn = (targetIndex === currentPlayerIndex && isBlank);
+
+            // Al vaciarse la recámara, avanzar de ronda o finalizar
+            if (chamber.length === 0) {
+                if (currentRound < maxRounds) {
+                    currentRound++;
+                    addLog(`<strong style='color: #ffcc00;'><br>--- FIN DE RECANTO | RONDA ${currentRound} DE ${maxRounds} ---</strong>`);
+                    loadNewChamber();
+                } else {
+                    addLog("<strong style='color: #ffcc00;'><br>--- FIN DE LA RONDA 3 DE 3 ---</strong>");
+                    endMatch();
+                }
+            } else {
+                if (!repeatsTurn) {
+                    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+                } else {
+                    addLog(`<em>¡${executor.name} mantiene su turno por cartucho vacío!</em>`);
+                }
+                updateGameUI();
+            }
+        }
+
+        function resetGame() {
+            document.getElementById('setup-phase').classList.remove('hidden');
+            document.getElementById('game-phase').classList.add('hidden');
+            document.getElementById('log').innerHTML = "";
+            document.getElementById('fire-btn').disabled = false;
+            gameActive = false;
+        }
+    </script>
+</body>
+</html>
